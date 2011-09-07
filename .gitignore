@@ -19,6 +19,8 @@ opentripplanner-api-webapp/src/main/resources/org/
 opentripplanner-integration/src/main/resources/
 opentripplanner-webapp/src/main/webapp/js/lib-min.js
 opentripplanner-webapp/src/main/webapp/js/otp-min.js
+opentripplanner-analyst-webapp/src/main/webapp/js/lib-min.js
+opentripplanner-analyst-webapp/src/main/webapp/js/otp-min.js
 *~
 .classpath
 .project
