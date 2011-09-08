@@ -158,23 +158,20 @@ otp.analyst.IsochroneDemo = {
                 'maxTime' : this.timeSlider.getValue()*60
             },
             success: function ( result, request ) {
-                //alert("success " + result.responseText);
                 var geojson = new OpenLayers.Format.GeoJSON('Geometry');
-                console.log('init geojson');
-                var multiPt = geojson.read(result.responseText)[0];
                 
-                //var feat = new OpenLayers.Feature.Vector(
-                //    new OpenLayers.Geometry.Point(initLocationProj.lon, initLocationProj.lat)
-                //);
-                //console.log("geom="+multiPt.geometry);
-                var geom2 = multiPt.geometry.transform(
+                var arr = geojson.read(result.responseText);
+                //console.log("ret arr size = "+arr.length);
+                var geom = arr[0];
+                
+                //console.log("geom="+geom.geometry);
+                var geom2 = geom.geometry.transform(
                     new OpenLayers.Projection("EPSG:4326"), thisMain.map.getProjectionObject());
-                console.log("geom="+multiPt.geometry);
+                //console.log("geom2="+geom2);
                 
                 if(thisMain.reachableLayer != null) thisMain.map.removeLayer(thisMain.reachableLayer);
                 thisMain.reachableLayer = new OpenLayers.Layer.Vector("Reachable Set");
                 var features = [ new OpenLayers.Feature.Vector(geom2) ];
-                //features.push(marker);
                 thisMain.reachableLayer.addFeatures(features);
                 thisMain.map.addLayer(thisMain.reachableLayer);
                 
