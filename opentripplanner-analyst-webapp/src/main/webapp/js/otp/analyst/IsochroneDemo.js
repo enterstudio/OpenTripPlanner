@@ -18,13 +18,21 @@ otp.analyst.IsochroneDemo = {
 
     map :               null,
     locationField :     null,
+    dateField :         null,   
+    timeField :         null,   
     timeSlider :        null,
+    seriesNumberSlider :   null,
+    seriesIntervalSlider:   null,
     currentLocation :   null,
     reachableLayer :    null,
+    maxSeriesTime :     0,
+    isoLayers :         null,
+    
 
     initialize : function(config) {
         
         var thisMain = this;
+        this.isoLayers = new Array();
            
         this.map = new OpenLayers.Map();
         var arrayOSM = ["http://otile1.mqcdn.com/tiles/1.0.0/osm/${z}/${x}/${y}.png",
@@ -46,6 +54,7 @@ otp.analyst.IsochroneDemo = {
         var initLocationProj = new OpenLayers.LonLat(-122.681944, 45.52).transform(
                 new OpenLayers.Projection("EPSG:4326"), this.map.getProjectionObject());
             
+        console.log("map proj: "+this.map.getProjectionObject());    
         var markers = new OpenLayers.Layer.Vector(
             "Markers",
             {
@@ -89,6 +98,15 @@ otp.analyst.IsochroneDemo = {
             readOnly: true
         });
         
+        this.timeField = new Ext.form.TimeField({
+            fieldLabel : 'Start Time',
+            value :      new Date()
+        });
+        
+        this.dateField = new Ext.form.DateField({
+            fieldLabel : 'Start Date',
+            value :      new Date()
+        });
         
         this.timeSlider = new Ext.slider.SingleSlider({
             fieldLabel: 'Max Time (min.)',
@@ -98,23 +116,69 @@ otp.analyst.IsochroneDemo = {
             plugins: new GeoExt.SliderTip()
         });
 
-        var runButton = new Ext.Button({
+        var runSingleButton = new Ext.Button({
             text: "Run",
             width: 100,
             handler: function(btn, evt) {
-                //console.log("button");
-                thisMain.isoQuery();
+                thisMain.clearIsoLayers();
+                thisMain.maxSeriesTime = 0;
+                thisMain.isoQuery(thisMain.timeSlider.getValue(), false);
             }   
         });
         
-                    
+        this.seriesNumberSlider = new Ext.slider.SingleSlider({
+            fieldLabel: 'Number',
+            value: 5,
+            minValue: 1,
+            maxValue: 20,
+            plugins: new GeoExt.SliderTip()
+        });
+
+        this.seriesIntervalSlider = new Ext.slider.SingleSlider({
+            fieldLabel: 'Interval (min.)',
+            value: 15,
+            minValue: 0,
+            maxValue: 60,
+            plugins: new GeoExt.SliderTip()
+        });
+        
+        var runSeriesButton = new Ext.Button({
+            text: "Run",
+            width: 100,
+            handler: function(btn, evt) {
+                thisMain.clearIsoLayers();
+                thisMain.maxSeriesTime = thisMain.seriesNumberSlider.getValue() * thisMain.seriesIntervalSlider.getValue();
+                thisMain.isoQuery(thisMain.seriesIntervalSlider.getValue(), true);
+            }   
+        });
+
+        var singleIsoPanel =  new Ext.Panel({
+            layout: 'form',
+            title: 'Single Isochrone',
+            padding: 10,
+            items: [ this.timeSlider, runSingleButton ],
+            style: {
+                marginTop: '15px'
+            }
+        });
+        
+        var isoSeriesPanel =  new Ext.Panel({
+            layout: 'form',
+            title: 'Isochrone Series',
+            padding: 10,
+            items: [ this.seriesNumberSlider, this.seriesIntervalSlider, runSeriesButton ],
+            style: {
+                marginTop: '15px'
+            }
+        });
+                            
         var controlsPanel = new Ext.Panel({
             layout: 'form',
             title: 'Controls',
             padding: 10,
             width: 300,
             region: 'west',
-            items: [ this.locationField, this.timeSlider, runButton ]
+            items: [ this.locationField, this.dateField, this.timeField, singleIsoPanel, isoSeriesPanel ] //this.timeSlider, runButton ]
         });
         
         // set up the map panel
@@ -140,13 +204,14 @@ otp.analyst.IsochroneDemo = {
         this.locationUpdated();
     },
 
-    isoQuery : function() {
+    isoQuery : function(maxTime, inSeries) {
     
         var thisMain = this;
         
         //console.log(currentLocation.lon + ", " + currentLocation.lat + ", " + timeSlider.getValue());
         var url = "/opentripplanner-api-webapp/ws/iso?fromLat=" + 
                    this.currentLocation.lat + "&fromLon=" + this.currentLocation.lon + "&maxTime=" + this.timeSlider.getValue();
+        console.log("inseries="+inSeries);        
         console.log(url);
         
         Ext.Ajax.request({
@@ -155,28 +220,49 @@ otp.analyst.IsochroneDemo = {
             params : {
                 'fromLat' : this.currentLocation.lat,
                 'fromLon' : this.currentLocation.lon,
-                'maxTime' : this.timeSlider.getValue()*60
+                'startDate' : '9/14/2011', //this.dateField.getValue(),
+                'startTime' : this.timeField.getValue(),
+                'maxTime' : maxTime*60 //this.timeSlider.getValue()*60
             },
             success: function ( result, request ) {
                 var geojson = new OpenLayers.Format.GeoJSON('Geometry');
                 
-                var arr = geojson.read(result.responseText);
-                //console.log("ret arr size = "+arr.length);
-                var geom = arr[0];
+                var ret = geojson.read(result.responseText);
+                //console.log(result.responseText);
+                
+                //console.log("ret arr size = "+ret.length);
+                var geom = ret[0];
                 
                 //console.log("geom="+geom.geometry);
-                var geom2 = geom.geometry.transform(
-                    new OpenLayers.Projection("EPSG:4326"), thisMain.map.getProjectionObject());
+                /*var geom2 = geom.geometry.transform(
+                    new OpenLayers.Projection("EPSG:4326"), thisMain.map.getProjectionObject());*/
                 //console.log("geom2="+geom2);
                 
-                if(thisMain.reachableLayer != null) thisMain.map.removeLayer(thisMain.reachableLayer);
-                thisMain.reachableLayer = new OpenLayers.Layer.Vector("Reachable Set");
-                var features = [ new OpenLayers.Feature.Vector(geom2) ];
-                thisMain.reachableLayer.addFeatures(features);
-                thisMain.map.addLayer(thisMain.reachableLayer);
+                //if(thisMain.reachableLayer != null) thisMain.map.removeLayer(thisMain.reachableLayer);
                 
-
-            },
+                var colorPct = inSeries ? maxTime / (thisMain.seriesNumberSlider.getValue() * thisMain.seriesIntervalSlider.getValue()) : 0;
+                console.log("cPct="+colorPct);                
+                var styleMap = new OpenLayers.StyleMap({
+                    fillColor:   'rgb('+Math.floor(colorPct*30)+', '+Math.floor(colorPct*144)+', 205)', //'#1e90ff', 
+                    fillOpacity: 0.5,
+                    strokeWidth: 3,
+                    strokeColor: 'rgb(0,'+Math.floor(colorPct*191)+', 205)'
+                });
+                var isoLayer = new OpenLayers.Layer.Vector("Isochrone-"+maxTime, {
+                    styleMap: styleMap    
+                });
+                
+                var features = [ new OpenLayers.Feature.Vector(geom.geometry) ];
+                isoLayer.addFeatures(features);
+                
+                thisMain.map.addLayer(isoLayer);
+                thisMain.map.setLayerIndex(isoLayer, -maxTime);
+                thisMain.isoLayers.push(isoLayer);
+                
+                if(inSeries && maxTime + thisMain.seriesIntervalSlider.getValue() <= thisMain.maxSeriesTime) {
+                    thisMain.isoQuery(maxTime + thisMain.seriesIntervalSlider.getValue(), true);
+                }
+            },  // end of success function
             failure: function ( result, request ) {
                 alert("fail " + result.responseText);
             }
@@ -185,6 +271,15 @@ otp.analyst.IsochroneDemo = {
 
     locationUpdated : function() {
         this.locationField.setValue(this.currentLocation.lat + "," + this.currentLocation.lon);
+    },
+    
+    clearIsoLayers : function () {
+        for(var i = 0; i < this.isoLayers.length; i++) {
+            var layer = this.isoLayers[i];  
+            console.log("layer="+layer);
+            this.map.removeLayer(layer)
+        }
+        this.isoLayers = new Array();
     },
 
     CLASS_NAME: "otp.analyst.IsochroneDemo"
