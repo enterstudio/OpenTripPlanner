@@ -15,13 +15,17 @@ import javax.xml.bind.annotation.XmlRootElement;
 
 import org.geotools.geometry.GeneralDirectPosition;
 import org.geotools.referencing.CRS;
+import org.onebusaway.gtfs.model.AgencyAndId;
 import org.opengis.geometry.DirectPosition;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
 import org.opengis.referencing.operation.MathTransform;
 import org.opentripplanner.routing.algorithm.GenericDijkstra;
 import org.opentripplanner.routing.core.Graph;
 import org.opentripplanner.routing.core.OptimizeType;
+import org.opentripplanner.routing.core.RouteSpec;
 import org.opentripplanner.routing.core.State;
+import org.opentripplanner.routing.core.TraverseMode;
+import org.opentripplanner.routing.core.TraverseModeSet;
 import org.opentripplanner.routing.core.TraverseOptions;
 import org.opentripplanner.routing.core.Vertex;
 import org.opentripplanner.routing.services.GraphService;
@@ -54,6 +58,7 @@ public class Isochrone {
             @QueryParam("fromLon") Float fromLon,
             @QueryParam("startDate") String startDate,
             @QueryParam("startTime") String startTime,
+            @QueryParam("usePurpleLine") Boolean usePurpleLine,
             @QueryParam("maxTime") Double maxTime) {
 		
         GraphService graphService = pathServiceFactory.getPathService("").getGraphService();
@@ -66,6 +71,8 @@ public class Isochrone {
         Date d = DateUtils.parseDate(startDate);
         long time = d.getTime()/1000 + DateUtils.secPastMid(startTime);
         
+        //System.out.println("start="+startDate+","+startTime);
+        //System.out.println("time="+time);
         TraverseOptions options = new TraverseOptions();
         
         if (graphService.getCalendarService() != null)
@@ -76,7 +83,14 @@ public class Isochrone {
         options.setOptimize(OptimizeType.QUICK);
         options.maxWeight = maxTime;
         
-       
+        if(!usePurpleLine) {
+        	RouteSpec rs = new RouteSpec("Test","Purple Line");
+        	options.bannedRoutes.add(rs);
+        
+        	options.bannedTrips.add(new AgencyAndId("Test", "PLEB"));
+        	options.bannedTrips.add(new AgencyAndId("Test", "PLWB"));
+        }
+         
         GenericDijkstra dijkstra = new GenericDijkstra(graph, options);
         
         State initialState = new State(time, origin, options);

@@ -21,6 +21,7 @@ otp.analyst.IsochroneDemo = {
     dateField :         null,   
     timeField :         null,   
     timeSlider :        null,
+    usePurpleLineCB :     null,
     seriesNumberSlider :   null,
     seriesIntervalSlider:   null,
     currentLocation :   null,
@@ -51,9 +52,9 @@ otp.analyst.IsochroneDemo = {
         this.map.addLayer(baseAerial);
         this.map.addControl(new OpenLayers.Control.LayerSwitcher());
         
-        var initLocationProj = new OpenLayers.LonLat(-122.681944, 45.52).transform(
+        var initLocationProj = new OpenLayers.LonLat(-77.03197, 38.994172).transform(
                 new OpenLayers.Projection("EPSG:4326"), this.map.getProjectionObject());
-            
+        // -122.681944, 45.52    
         console.log("map proj: "+this.map.getProjectionObject());    
         var markers = new OpenLayers.Layer.Vector(
             "Markers",
@@ -108,6 +109,11 @@ otp.analyst.IsochroneDemo = {
             value :      new Date()
         });
         
+        this.usePurpleLineCB = new Ext.form.Checkbox({
+            fieldLabel : 'Use Purple Line',
+            value :      false
+        });
+
         this.timeSlider = new Ext.slider.SingleSlider({
             fieldLabel: 'Max Time (min.)',
             value: 30,
@@ -178,7 +184,7 @@ otp.analyst.IsochroneDemo = {
             padding: 10,
             width: 300,
             region: 'west',
-            items: [ this.locationField, this.dateField, this.timeField, singleIsoPanel, isoSeriesPanel ] //this.timeSlider, runButton ]
+            items: [ this.locationField, this.dateField, this.timeField, this.usePurpleLineCB, singleIsoPanel, isoSeriesPanel ] //this.timeSlider, runButton ]
         });
         
         // set up the map panel
@@ -220,8 +226,9 @@ otp.analyst.IsochroneDemo = {
             params : {
                 'fromLat' : this.currentLocation.lat,
                 'fromLon' : this.currentLocation.lon,
-                'startDate' : '9/14/2011', //this.dateField.getValue(),
+                'startDate' : '10/27/2011', //this.dateField.getValue(),
                 'startTime' : this.timeField.getValue(),
+                'usePurpleLine' : this.usePurpleLineCB.getValue(),
                 'maxTime' : maxTime*60 //this.timeSlider.getValue()*60
             },
             success: function ( result, request ) {
