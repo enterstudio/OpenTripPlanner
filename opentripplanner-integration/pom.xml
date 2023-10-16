@@ -46,7 +46,7 @@
         <dependency>
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>
-            <version>20090211</version>
+            <version>20231013</version>
         </dependency>
     </dependencies>
 
@@ -94,7 +94,7 @@
                             <arguments>
                                 <argument>-Xmx900m</argument>
                                 <argument>-classpath</argument>
-                                <classpath />
+                                <classpath/>
                                 <argument>org.opentripplanner.integration.graph_builder.GraphBuilderIntegrationMain</argument>
                             </arguments>
                         </configuration>
